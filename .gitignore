@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+# IR files
+*.ll
+*.bc
+
+# Build files
+**/build/**
+
+# VSCode config files
+.vscode/
