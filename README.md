@@ -18,9 +18,9 @@ e.g. code obfuscation.
 The aim of this project is to provide a collection of LLVM passes to provide
 increased software security through
 [code obfuscation](https://en.wikipedia.org/wiki/Obfuscation_%28software%29)
-and tamper-proofing. As LLVM pass mostly work at the
+and tamper-proofing. As LLVM pass works at the
 [Intermediate Representation](http://en.wikipedia.org/wiki/Intermediate_language)
-(IR) level, these tools should be compatible with all programming languages and
+(IR) level, these passes should be compatible with all programming languages and
 target platforms supported by LLVM 15.
 
 **Note**: The project is using and focusing on the _New Pass Manager_ aka Pass Manager
@@ -67,7 +67,7 @@ Once the installation (or upgrade) is complete, all the required header files,
 libraries and tools will be located in `/usr/local/opt/llvm/`. -->
 
 ## Installing LLVM 15 on Ubuntu
-On Ubuntu Focal Fossa, you can install modern LLVMfrom the official
+On Ubuntu Focal Fossa, you can install modern LLVM from the official
 [repository](http://apt.llvm.org/):
 
 ```bash

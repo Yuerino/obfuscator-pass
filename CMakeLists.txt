@@ -97,4 +97,5 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
 # 4. ADD TARGETS
 #===============================================================================
 add_subdirectory(src)
+add_subdirectory(test)
 add_subdirectory(HelloWorld)

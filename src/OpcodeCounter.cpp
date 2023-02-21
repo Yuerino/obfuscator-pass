@@ -11,10 +11,7 @@ namespace llvm {
  * @brief Helper function to pretty-print the result of opcode counter
  */
 static void printOpcodeCounterResult(raw_ostream &OutS,
-                                     const ResultOpcodeCounter &OpcodeMap,
-                                     StringRef FuncName) {
-  OutS << "=================================================\n";
-  OutS << format("OpcodeCounter of %s results\n", FuncName.str().c_str());
+                                     const ResultOpcodeCounter &OpcodeMap) {
   OutS << "=================================================\n";
   const char *str1 = "OPCODE";
   const char *str2 = "#TIMES USED";
@@ -57,7 +54,9 @@ OpcodeCounter::run(const Function &Func,
 PreservedAnalyses
 OpcodeCounterPrinter::run(Function &Func, FunctionAnalysisManager &FAM) const {
   const auto &OpcodeMap = FAM.getResult<OpcodeCounter>(Func);
-  printOpcodeCounterResult(OS, OpcodeMap, Func.getName());
+  OS << "Printing analysis 'OpcodeCounter Pass' for function '"
+     << Func.getName() << "':\n";
+  printOpcodeCounterResult(OS, OpcodeMap);
   return PreservedAnalyses::all();
 }
 
