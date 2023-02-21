@@ -113,9 +113,7 @@ installation or build directory of LLVM 15. It is used to locate the
 corresponding `LLVMConfig.cmake` script that is used to set the include and
 library paths.
 
-Every LLVM pass is implemented in a separate shared object
-(you can learn more about shared objects
-[here](http://www.yolinux.com/TUTORIALS/LibraryArchives-StaticAndDynamic.html)).
+Every LLVM pass is implemented in a separate shared object.
 These shared objects are essentially dynamically loadable plugins for **opt**.
 All plugins are built in the `<build/dir>/lib` directory.
 
@@ -134,6 +132,7 @@ References and Credits
 ========
 Below is a list of resources and projects that this project is based on and I have found it very helpful.
 * [llvm-tutor](https://github.com/banach-space/llvm-tutor)
+* [Writing an LLVM Pass: 101](https://www.youtube.com/watch?v=ar7cJl2aBuU)
 * [obfuscator](https://github.com/obfuscator-llvm/obfuscator)
 * [Obfuscating C++ Programs via Control Flow Flattening](http://ac.inf.elte.hu/Vol_030_2009/003.pdf)
 
