@@ -34,6 +34,7 @@
 # IR files
 *.ll
 *.bc
+!test/*.ll
 
 # Build files
 **/build/**

@@ -18,9 +18,9 @@ e.g. code obfuscation.
 The aim of this project is to provide a collection of LLVM passes to provide
 increased software security through
 [code obfuscation](https://en.wikipedia.org/wiki/Obfuscation_%28software%29)
-and tamper-proofing. As LLVM pass mostly work at the
+and tamper-proofing. As LLVM pass works at the
 [Intermediate Representation](http://en.wikipedia.org/wiki/Intermediate_language)
-(IR) level, these tools should be compatible with all programming languages and
+(IR) level, these passes should be compatible with all programming languages and
 target platforms supported by LLVM 15.
 
 **Note**: The project is using and focusing on the _New Pass Manager_ aka Pass Manager
@@ -67,7 +67,7 @@ Once the installation (or upgrade) is complete, all the required header files,
 libraries and tools will be located in `/usr/local/opt/llvm/`. -->
 
 ## Installing LLVM 15 on Ubuntu
-On Ubuntu Focal Fossa, you can install modern LLVMfrom the official
+On Ubuntu Focal Fossa, you can install modern LLVM from the official
 [repository](http://apt.llvm.org/):
 
 ```bash
@@ -85,9 +85,7 @@ might be your preferred way of obtaining LLVM 15. The following steps will work
 on Linux and Mac OS X:
 
 ```bash
-git clone https://github.com/llvm/llvm-project.git
-cd llvm-project
-git checkout release/15.x
+git clone --depth 1 -b release/15.x https://github.com/llvm/llvm-project.git
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=host -DLLVM_ENABLE_PROJECTS=clang <llvm-project/root/dir>/llvm/
@@ -113,9 +111,7 @@ installation or build directory of LLVM 15. It is used to locate the
 corresponding `LLVMConfig.cmake` script that is used to set the include and
 library paths.
 
-Every LLVM pass is implemented in a separate shared object
-(you can learn more about shared objects
-[here](http://www.yolinux.com/TUTORIALS/LibraryArchives-StaticAndDynamic.html)).
+Every LLVM pass is implemented in a separate shared object.
 These shared objects are essentially dynamically loadable plugins for **opt**.
 All plugins are built in the `<build/dir>/lib` directory.
 
@@ -130,10 +126,30 @@ extension. When working on Mac OS, use `*.dylib` instead.
 
 <!-- === -->
 
+Testing
+=======
+In order to run **obfuscator-pass** tests, you need to install **llvm-lit** (aka
+**lit**). If it's not bundled with LLVM 15 packages, but you can install it with
+**pip**:
+
+```bash
+# Install lit - note that this installs lit globally
+pip install lit
+```
+Running the tests is as simple as:
+
+```bash
+$ lit <build_dir>/test
+```
+You should see all tests passing.
+
+<!-- === -->
+
 References and Credits
 ========
 Below is a list of resources and projects that this project is based on and I have found it very helpful.
 * [llvm-tutor](https://github.com/banach-space/llvm-tutor)
+* [Writing an LLVM Pass: 101](https://www.youtube.com/watch?v=ar7cJl2aBuU)
 * [obfuscator](https://github.com/obfuscator-llvm/obfuscator)
 * [Obfuscating C++ Programs via Control Flow Flattening](http://ac.inf.elte.hu/Vol_030_2009/003.pdf)
 
@@ -143,7 +159,7 @@ License
 ========
 MIT License
 
-Copyright (c) 2023 Yuerino
+Copyright (c) 2023 Thien Ha
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
