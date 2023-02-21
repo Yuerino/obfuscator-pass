@@ -85,9 +85,7 @@ might be your preferred way of obtaining LLVM 15. The following steps will work
 on Linux and Mac OS X:
 
 ```bash
-git clone https://github.com/llvm/llvm-project.git
-cd llvm-project
-git checkout release/15.x
+git clone --depth 1 -b release/15.x https://github.com/llvm/llvm-project.git
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=host -DLLVM_ENABLE_PROJECTS=clang <llvm-project/root/dir>/llvm/
@@ -128,6 +126,25 @@ extension. When working on Mac OS, use `*.dylib` instead.
 
 <!-- === -->
 
+Testing
+=======
+In order to run **obfuscator-pass** tests, you need to install **llvm-lit** (aka
+**lit**). If it's not bundled with LLVM 15 packages, but you can install it with
+**pip**:
+
+```bash
+# Install lit - note that this installs lit globally
+pip install lit
+```
+Running the tests is as simple as:
+
+```bash
+$ lit <build_dir>/test
+```
+You should see all tests passing.
+
+<!-- === -->
+
 References and Credits
 ========
 Below is a list of resources and projects that this project is based on and I have found it very helpful.
@@ -142,7 +159,7 @@ License
 ========
 MIT License
 
-Copyright (c) 2023 Yuerino
+Copyright (c) 2023 Thien Ha
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
