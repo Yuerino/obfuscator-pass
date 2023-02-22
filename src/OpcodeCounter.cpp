@@ -1,27 +1,14 @@
 #include "OpcodeCounter.hpp"
 
-#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 namespace llvm {
 
-/**
- * @brief Helper function to pretty-print the result of opcode counter
- */
-static void printOpcodeCounterResult(raw_ostream &OutS,
-                                     const ResultOpcodeCounter &OpcodeMap) {
-  OutS << "=================================================\n";
-  const char *str1 = "OPCODE";
-  const char *str2 = "#TIMES USED";
-  OutS << format("%-20s %-10s\n", str1, str2);
-  OutS << "-------------------------------------------------\n";
-  for (const auto &Inst : OpcodeMap) {
-    OutS << format("%-20s %-10lu\n", Inst.first().str().c_str(), Inst.second);
-  }
-  OutS << "-------------------------------------------------\n\n";
-}
+static void printOpcodeCounterResult(raw_ostream &,
+                                     const ResultOpcodeCounter &);
 
 AnalysisKey OpcodeCounter::Key;
 
@@ -33,15 +20,14 @@ OpcodeCounter::run(const Function &Func,
                    const FunctionAnalysisManager &) const {
   OpcodeCounter::Result OpcodeMap;
 
-  for (const auto &BB : Func) {
-    for (const auto &Inst : BB) {
-      StringRef Name = Inst.getOpcodeName();
+  for (const_inst_iterator I = inst_begin(Func), E = inst_end(Func); I != E;
+       ++I) {
+    StringRef Name = I->getOpcodeName();
 
-      if (OpcodeMap.find(Name) == OpcodeMap.end()) {
-        OpcodeMap[Inst.getOpcodeName()] = 1;
-      } else {
-        OpcodeMap[Inst.getOpcodeName()]++;
-      }
+    if (OpcodeMap.find(Name) == OpcodeMap.end()) {
+      OpcodeMap[Name] = 1;
+    } else {
+      OpcodeMap[Name]++;
     }
   }
 
@@ -79,7 +65,7 @@ PassPluginLibraryInfo getOpcodeCounterPluginInfo() {
                 });
             PB.registerAnalysisRegistrationCallback(
                 [](FunctionAnalysisManager &FAM) {
-                  FAM.registerPass([&] { return OpcodeCounter(); });
+                  FAM.registerPass([] { return OpcodeCounter(); });
                 });
           }};
 }
@@ -90,6 +76,21 @@ PassPluginLibraryInfo getOpcodeCounterPluginInfo() {
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo() {
   return getOpcodeCounterPluginInfo();
+}
+
+/**
+ * @brief Helper function to pretty-print the result of opcode counter
+ */
+static void printOpcodeCounterResult(raw_ostream &OutS,
+                                     const ResultOpcodeCounter &OpcodeMap) {
+  const char *format = "{0,-20} {1,-10}\n";
+  OutS << "=================================================\n";
+  OutS << formatv(format, "OPCODE", "#TIMES USED");
+  OutS << "-------------------------------------------------\n";
+  for (const auto &Inst : OpcodeMap) {
+    OutS << formatv(format, Inst.getKey(), Inst.getValue());
+  }
+  OutS << "-------------------------------------------------\n\n";
 }
 
 } // namespace llvm
