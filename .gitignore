@@ -41,3 +41,6 @@
 
 # VSCode config files
 .vscode/
+
+# clangd caches
+.cache/

@@ -65,6 +65,9 @@ add_definitions(${LLVM_DEFINITIONS})
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "")
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Export compile commands file for clang-tidy
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Build type
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING
