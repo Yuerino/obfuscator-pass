@@ -6,7 +6,7 @@ Obfuscating LLVM passes based on **LLVM 15**
 
 **obfuscator-pass** is a collection of LLVM passes for obfuscating. Key features:
 
-* **Control Flow Flattening** - The purpose of this pass is to completely flatten the control flow graph of a program.
+* **Control Flow Flattening** - The purpose of this pass is to flatten the control flow graph of a function.
 
 ## Overview
 
@@ -49,8 +49,21 @@ installing LLVM 15):
   * [**FileCheck**](https://llvm.org/docs/CommandGuide/FileCheck.html) (LIT
     requirement, it's used to check whether tests generate the expected output)
 
-<!-- ## Installing LLVM 15 on Mac OS X
-On Darwin you can install LLVM 15 with [Homebrew](https://brew.sh/):
+## Installing LLVM 15 on Ubuntu
+On Ubuntu Focal Fossa, you can install modern LLVM from the official
+[repository](http://apt.llvm.org/):
+
+```bash
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-15 main"
+sudo apt-get update
+sudo apt-get install -y llvm-15 llvm-15-dev llvm-15-tools clang-15
+```
+This will install all the required header files, libraries and tools in
+`/usr/lib/llvm-15/`.
+
+## Installing LLVM 15 on Mac OS X
+On Darwin you can install LLVM 15 with Homebrew:
 
 ```bash
 brew install llvm@15
@@ -64,20 +77,7 @@ brew upgrade llvm
 ```
 
 Once the installation (or upgrade) is complete, all the required header files,
-libraries and tools will be located in `/usr/local/opt/llvm/`. -->
-
-## Installing LLVM 15 on Ubuntu
-On Ubuntu Focal Fossa, you can install modern LLVM from the official
-[repository](http://apt.llvm.org/):
-
-```bash
-wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-15 main"
-sudo apt-get update
-sudo apt-get install -y llvm-15 llvm-15-dev llvm-15-tools clang-15
-```
-This will install all the required header files, libraries and tools in
-`/usr/lib/llvm-15/`.
+libraries and tools will be located in `/usr/local/opt/llvm/`.
 
 ## Building LLVM 15 From Sources
 Building from sources can be slow and tricky to debug. It is not necessary, but
