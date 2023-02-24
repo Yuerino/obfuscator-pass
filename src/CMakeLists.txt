@@ -3,10 +3,15 @@
 # ======================================================
 set(OBFUSCATOR_PASS_PLUGINS
   OpcodeCounter
+  CFGPrinter
 )
 
 set(OpcodeCounter_SOURCES
   OpcodeCounter.cpp
+)
+
+set(CFGPrinter_SOURCES
+  CFGPrinter.cpp
 )
 
 # ==============================
