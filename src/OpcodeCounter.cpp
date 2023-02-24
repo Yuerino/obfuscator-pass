@@ -48,7 +48,7 @@ OpcodeCounterPrinter::run(Function &Func, FunctionAnalysisManager &FAM) const {
 
 /**
  * @brief OpcodeCounter and OpcodeCounterPrinter pass registration callback
- * @note Pass name: "opcode-counter"
+ * @note Pass name: "print<opcode-counter>"
  */
 PassPluginLibraryInfo getOpcodeCounterPluginInfo() {
   return {LLVM_PLUGIN_API_VERSION, "OpcodeCounter", LLVM_VERSION_STRING,
@@ -56,7 +56,7 @@ PassPluginLibraryInfo getOpcodeCounterPluginInfo() {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>) {
-                  if (Name != "opcode-counter") {
+                  if (Name != "print<opcode-counter>") {
                     return false;
                   }
 
