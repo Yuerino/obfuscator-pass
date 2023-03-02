@@ -4,6 +4,7 @@
 set(OBFUSCATOR_PASS_PLUGINS
   OpcodeCounter
   CFGPrinter
+  MBASub
 )
 
 set(OpcodeCounter_SOURCES
@@ -12,6 +13,10 @@ set(OpcodeCounter_SOURCES
 
 set(CFGPrinter_SOURCES
   CFGPrinter.cpp
+)
+
+set(MBASub_SOURCES
+  MBASub.cpp
 )
 
 # ==============================
