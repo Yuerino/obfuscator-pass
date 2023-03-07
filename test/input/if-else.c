@@ -1,11 +1,18 @@
-int main(int argc, char *argv[]) {
-  int ret = 0;
-
-  if (argc == 1) {
-    ret = 1;
-  } else {
-    ret = 2;
+int check_password(const char *passwd, int len) {
+  if (len != 5) {
+    return 0;
   }
 
-  return ret;
+  if (passwd[0] == 'L') {
+    if (passwd[1] == 'M') {
+      if (passwd[2] == 'F') {
+        if (passwd[3] == 'A') {
+          if (passwd[4] == 'O') {
+            return 1;
+          }
+        }
+      }
+    }
+  }
+  return 0;
 }
