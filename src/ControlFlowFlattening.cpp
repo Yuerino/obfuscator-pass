@@ -1,15 +1,15 @@
 #include "ControlFlowFlattening.hpp"
 
 #include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Instructions.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
-#include "llvm/IR/PassManager.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/RandomNumberGenerator.h"
+#include <cstdint>
 #include <memory>
+#include <random>
 
 #define DEBUG_TYPE "cff"
 
@@ -43,11 +43,20 @@ PreservedAnalyses ControlFlowFlattening::run(Function &Func,
 
   EntryBlock = splitEntryBlock(EntryBlock);
 
-  dbgs() << Func;
+  SwitchInst *SwInst = CreateSwitchLoop(Func, EntryBlock, *RNG);
+  (void)SwInst; // FIXME: unused;
+
+  // TODO: Update all BB block flow accordingly
 
   return PreservedAnalyses::none();
 }
 
+/**
+ * @brief Split entry basic block if it is conditional control flow and add it
+ * to FlattenBB
+ * @return BasicBlock* New entry basic block after splited otherwise same
+ * EntryBlock
+ */
 BasicBlock *ControlFlowFlattening::splitEntryBlock(BasicBlock *EntryBlock) {
   if (BranchInst *BrInst = dyn_cast<BranchInst>(EntryBlock->getTerminator())) {
     if (BrInst->isConditional()) {
@@ -56,7 +65,7 @@ BasicBlock *ControlFlowFlattening::splitEntryBlock(BasicBlock *EntryBlock) {
       if (Instruction *CondInst = dyn_cast<Instruction>(Condition)) {
         BasicBlock *SplitedEntry =
             EntryBlock->splitBasicBlockBefore(CondInst, "SplitedEntry");
-        FlattenBB.insert(FlattenBB.begin(), SplitedEntry);
+        FlattenBB.insert(FlattenBB.begin(), EntryBlock);
         EntryBlock = SplitedEntry;
       } else {
         LLVM_DEBUG(
@@ -68,11 +77,65 @@ BasicBlock *ControlFlowFlattening::splitEntryBlock(BasicBlock *EntryBlock) {
                  dyn_cast<SwitchInst>(EntryBlock->getTerminator())) {
     BasicBlock *SplitedEntry =
         EntryBlock->splitBasicBlockBefore(SwInst, "SplitedEntry");
-    FlattenBB.insert(FlattenBB.begin(), SplitedEntry);
+    FlattenBB.insert(FlattenBB.begin(), EntryBlock);
     EntryBlock = SplitedEntry;
   }
 
   return EntryBlock;
+}
+
+/**
+ * @brief Create a switch loop with random state and cases to all the BB
+ * @note This switch should never reach default case
+ */
+SwitchInst *
+ControlFlowFlattening::CreateSwitchLoop(Function &Func, BasicBlock *EntryBlock,
+                                        RandomNumberGenerator &RNG) {
+  std::uniform_int_distribution<uint32_t> Dist(10);
+  IRBuilder<> EntryBuilder(EntryBlock);
+
+  // Delete BR terminator to add switch alloca
+  EntryBlock->getTerminator()->eraseFromParent();
+
+  // Create and store a random state for switch var
+  AllocaInst *StateVar =
+      EntryBuilder.CreateAlloca(EntryBuilder.getInt32Ty(), nullptr, "StateVar");
+  EntryBuilder.CreateStore(EntryBuilder.getInt32(Dist(RNG)), StateVar);
+
+  BasicBlock *LoopEntryBB =
+      BasicBlock::Create(Func.getContext(), "EntryCase", &Func, EntryBlock);
+  BasicBlock *LoopEndBB =
+      BasicBlock::Create(Func.getContext(), "EndCase", &Func, EntryBlock);
+  BasicBlock *SwDefaultBB =
+      BasicBlock::Create(Func.getContext(), "DefaultCase", &Func, EntryBlock);
+
+  IRBuilder<> LoopEntryBuilder(LoopEntryBB);
+  IRBuilder<> LoopEndBuilder(LoopEndBB);
+  IRBuilder<> SwDefaultBuilder(SwDefaultBB);
+
+  EntryBlock->moveBefore(LoopEntryBB); // Move it back to the top
+  EntryBuilder.CreateBr(LoopEntryBB);
+
+  LoadInst *SwVar = LoopEntryBuilder.CreateLoad(LoopEntryBuilder.getInt32Ty(),
+                                                StateVar, "SwitchVar");
+  LoopEndBuilder.CreateBr(LoopEntryBB);
+  SwDefaultBuilder.CreateBr(LoopEndBB);
+
+  SwitchInst *SwInst = LoopEntryBuilder.CreateSwitch(SwVar, SwDefaultBB);
+
+  // Add switch case to all BB
+  for (BasicBlock *BB : FlattenBB) {
+    BB->moveBefore(LoopEndBB);
+
+    // FIXME: generate and replace unique id for each BB
+    auto *CaseValue = dyn_cast<ConstantInt>(ConstantInt::get(
+        SwInst->getCondition()->getType(), SwInst->getNumCases() + 1));
+    assert(CaseValue != nullptr && "How can this be null");
+
+    SwInst->addCase(CaseValue, BB);
+  }
+
+  return SwInst;
 }
 
 PassPluginLibraryInfo getControlFlowFlatteningPluginInfo() {
