@@ -6,6 +6,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Support/RandomNumberGenerator.h"
+#include <llvm-15/llvm/IR/BasicBlock.h>
 
 namespace llvm {
 
@@ -23,6 +24,10 @@ private:
 
 private:
   SmallVector<BasicBlock *, 10> FlattenBB;
+
+  BasicBlock *LoopEntry = nullptr;
+  BasicBlock *LoopEnd = nullptr;
+  AllocaInst *SwitchState = nullptr;
 };
 
 } // namespace llvm

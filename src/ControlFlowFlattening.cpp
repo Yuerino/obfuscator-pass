@@ -8,6 +8,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 #include <cstdint>
+#include <llvm-15/llvm/IR/Instructions.h>
 #include <memory>
 #include <random>
 
@@ -43,17 +44,82 @@ PreservedAnalyses ControlFlowFlattening::run(Function &Func,
 
   EntryBlock = splitEntryBlock(EntryBlock);
 
-  SwitchInst *SwInst = CreateSwitchLoop(Func, EntryBlock, *RNG);
-  (void)SwInst; // FIXME: unused;
+  LoopEntry =
+      BasicBlock::Create(Func.getContext(), "EntryCase", &Func, EntryBlock);
+  LoopEnd = BasicBlock::Create(Func.getContext(), "EndCase", &Func, EntryBlock);
 
-  // TODO: Update all BB block flow accordingly
+  SwitchInst *SwLoopInst = CreateSwitchLoop(Func, EntryBlock, *RNG);
+
+  // Update switch state in every BB/case
+  for (BasicBlock *BB : FlattenBB) {
+    Instruction *TermInst = BB->getTerminator();
+
+    if (isa<ReturnInst>(TermInst) || isa<UnreachableInst>(TermInst)) {
+      // Skip ret inst
+      continue;
+    }
+
+    if (isa<ResumeInst>(TermInst) || isa<InvokeInst>(TermInst)) {
+      // FIXME: not handling exception related inst for now
+      continue;
+    }
+
+    if (SwitchInst *SwInst = dyn_cast<SwitchInst>(TermInst)) {
+      (void)SwInst; // unused
+      // TODO: handle switch inst
+      continue;
+    }
+
+    if (BranchInst *BrInst = dyn_cast<BranchInst>(TermInst)) {
+      if (BrInst->isConditional()) {
+        BasicBlock *TrueBB = BrInst->getSuccessor(0);
+        BasicBlock *FalseBB = BrInst->getSuccessor(1);
+
+        auto *TrueCaseValue = SwLoopInst->findCaseDest(TrueBB);
+        assert(TrueCaseValue != nullptr &&
+               "Case to this BB should already be added");
+        auto *FalseCaseValue = SwLoopInst->findCaseDest(FalseBB);
+        assert(FalseCaseValue != nullptr &&
+               "Case to this BB should already be added");
+
+        IRBuilder<> CondBrBuilder(BB);
+
+        auto *SelectInst = CondBrBuilder.CreateSelect(
+            BrInst->getCondition(), TrueCaseValue, FalseCaseValue);
+
+        TermInst->eraseFromParent();
+        CondBrBuilder.CreateStore(SelectInst, SwitchState);
+        CondBrBuilder.CreateBr(LoopEnd);
+      }
+
+      else {
+        BasicBlock *Successor = BrInst->getSuccessor(0);
+
+        auto *CaseValue = SwLoopInst->findCaseDest(Successor);
+        assert(CaseValue != nullptr &&
+               "Case to this BB should already be added");
+
+        IRBuilder<> UncondBrBuilder(BB);
+
+        TermInst->eraseFromParent();
+        UncondBrBuilder.CreateStore(CaseValue, SwitchState);
+        UncondBrBuilder.CreateBr(LoopEnd);
+      }
+      continue;
+    }
+
+    LLVM_DEBUG(dbgs() << "Unhandled basic block, terminated with inst: "
+                      << TermInst << "\n");
+  }
+
+  dbgs() << Func << "\n";
 
   return PreservedAnalyses::none();
 }
 
 /**
- * @brief Split entry basic block if it is conditional control flow and add it
- * to FlattenBB
+ * @brief Split entry basic block if it is terminated by a conditional control
+ flow instruction and add the new splited to FlattenBB otherwise don't
  * @return BasicBlock* New entry basic block after splited otherwise same
  * EntryBlock
  */
@@ -65,27 +131,36 @@ BasicBlock *ControlFlowFlattening::splitEntryBlock(BasicBlock *EntryBlock) {
       if (Instruction *CondInst = dyn_cast<Instruction>(Condition)) {
         BasicBlock *SplitedEntry =
             EntryBlock->splitBasicBlockBefore(CondInst, "SplitedEntry");
+
         FlattenBB.insert(FlattenBB.begin(), EntryBlock);
         EntryBlock = SplitedEntry;
-      } else {
+      }
+
+      else {
+        // Because branch condition can be a constant value
         LLVM_DEBUG(
             dbgs()
             << "Condition of branch inst in entry block is not a condition\n");
       }
     }
-  } else if (SwitchInst *SwInst =
-                 dyn_cast<SwitchInst>(EntryBlock->getTerminator())) {
+  }
+
+  else if (SwitchInst *SwInst =
+               dyn_cast<SwitchInst>(EntryBlock->getTerminator())) {
     BasicBlock *SplitedEntry =
         EntryBlock->splitBasicBlockBefore(SwInst, "SplitedEntry");
+
     FlattenBB.insert(FlattenBB.begin(), EntryBlock);
     EntryBlock = SplitedEntry;
   }
+
+  // FIXME: handle invoke inst
 
   return EntryBlock;
 }
 
 /**
- * @brief Create a switch loop with random state and cases to all the BB
+ * @brief Create a switch loop with random state and add cases to all the BB
  * @note This switch should never reach default case
  */
 SwitchInst *
@@ -93,44 +168,39 @@ ControlFlowFlattening::CreateSwitchLoop(Function &Func, BasicBlock *EntryBlock,
                                         RandomNumberGenerator &RNG) {
   std::uniform_int_distribution<uint32_t> Dist(10);
   IRBuilder<> EntryBuilder(EntryBlock);
+  IRBuilder<> LoopEntryBuilder(LoopEntry);
+  IRBuilder<> LoopEndBuilder(LoopEnd);
+
+  BasicBlock *SwDefaultBB =
+      BasicBlock::Create(Func.getContext(), "DefaultCase", &Func, EntryBlock);
+  IRBuilder<> SwDefaultBuilder(SwDefaultBB);
+  SwDefaultBuilder.CreateBr(LoopEnd); // Should never reach default case
 
   // Delete BR terminator to add switch alloca
   EntryBlock->getTerminator()->eraseFromParent();
 
   // Create and store a random state for switch var
-  AllocaInst *StateVar =
-      EntryBuilder.CreateAlloca(EntryBuilder.getInt32Ty(), nullptr, "StateVar");
-  EntryBuilder.CreateStore(EntryBuilder.getInt32(Dist(RNG)), StateVar);
+  SwitchState = EntryBuilder.CreateAlloca(EntryBuilder.getInt32Ty(), nullptr,
+                                          "SwitchState");
+  EntryBuilder.CreateStore(EntryBuilder.getInt32(Dist(RNG)), SwitchState);
 
-  BasicBlock *LoopEntryBB =
-      BasicBlock::Create(Func.getContext(), "EntryCase", &Func, EntryBlock);
-  BasicBlock *LoopEndBB =
-      BasicBlock::Create(Func.getContext(), "EndCase", &Func, EntryBlock);
-  BasicBlock *SwDefaultBB =
-      BasicBlock::Create(Func.getContext(), "DefaultCase", &Func, EntryBlock);
-
-  IRBuilder<> LoopEntryBuilder(LoopEntryBB);
-  IRBuilder<> LoopEndBuilder(LoopEndBB);
-  IRBuilder<> SwDefaultBuilder(SwDefaultBB);
-
-  EntryBlock->moveBefore(LoopEntryBB); // Move it back to the top
-  EntryBuilder.CreateBr(LoopEntryBB);
+  EntryBlock->moveBefore(LoopEntry); // Move it back to the top
+  EntryBuilder.CreateBr(LoopEntry);
 
   LoadInst *SwVar = LoopEntryBuilder.CreateLoad(LoopEntryBuilder.getInt32Ty(),
-                                                StateVar, "SwitchVar");
-  LoopEndBuilder.CreateBr(LoopEntryBB);
-  SwDefaultBuilder.CreateBr(LoopEndBB);
+                                                SwitchState, "SwitchVar");
+  LoopEndBuilder.CreateBr(LoopEntry);
 
   SwitchInst *SwInst = LoopEntryBuilder.CreateSwitch(SwVar, SwDefaultBB);
 
   // Add switch case to all BB
   for (BasicBlock *BB : FlattenBB) {
-    BB->moveBefore(LoopEndBB);
+    BB->moveBefore(LoopEnd);
 
     // FIXME: generate and replace unique id for each BB
     auto *CaseValue = dyn_cast<ConstantInt>(ConstantInt::get(
         SwInst->getCondition()->getType(), SwInst->getNumCases() + 1));
-    assert(CaseValue != nullptr && "How can this be null");
+    assert(CaseValue != nullptr && "CaseValue can't never be nullptr here");
 
     SwInst->addCase(CaseValue, BB);
   }
