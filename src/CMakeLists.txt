@@ -3,10 +3,25 @@
 # ======================================================
 set(OBFUSCATOR_PASS_PLUGINS
   OpcodeCounter
+  CFGPrinter
+  MBASub
+  CFF
 )
 
 set(OpcodeCounter_SOURCES
   OpcodeCounter.cpp
+)
+
+set(CFGPrinter_SOURCES
+  CFGPrinter.cpp
+)
+
+set(MBASub_SOURCES
+  MBASub.cpp
+)
+
+set(CFF_SOURCES
+  ControlFlowFlattening.cpp
 )
 
 # ==============================
