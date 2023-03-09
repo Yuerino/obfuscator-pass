@@ -28,7 +28,7 @@ PreservedAnalyses ControlFlowFlattening::run(Function &Func,
       continue;
     }
 
-    // FIXME: not handling function with exception and invoke for now
+    // TODO: not handling function with exception and invoke for now
     if (BB.isLandingPad() || isa<InvokeInst>(BB.getTerminator())) {
       return PreservedAnalyses::all();
     }
@@ -59,13 +59,28 @@ PreservedAnalyses ControlFlowFlattening::run(Function &Func,
     }
 
     if (isa<ResumeInst>(TermInst) || isa<InvokeInst>(TermInst)) {
-      // FIXME: not handling exception related inst for now
+      // TODO: not handling exception related inst for now
       continue;
     }
 
     if (SwitchInst *SwInst = dyn_cast<SwitchInst>(TermInst)) {
-      (void)SwInst; // unused
-      // TODO: handle switch inst
+      for (const auto &SwCase : SwInst->cases()) {
+        BasicBlock *Successor = SwCase.getCaseSuccessor();
+
+        ConstantInt *CaseValue = SwLoopInst->findCaseDest(Successor);
+        assert(CaseValue != nullptr &&
+               "This BB should be added to switch case already");
+
+        BasicBlock *DispatchBB =
+            BasicBlock::Create(Func.getContext(), "", &Func, LoopEnd);
+
+        IRBuilder<> SwCaseBuilder(DispatchBB);
+
+        SwCaseBuilder.CreateStore(CaseValue, SwitchState);
+        SwCaseBuilder.CreateBr(LoopEnd);
+
+        SwCase.setSuccessor(DispatchBB);
+      }
       continue;
     }
 
@@ -76,10 +91,10 @@ PreservedAnalyses ControlFlowFlattening::run(Function &Func,
 
         auto *TrueCaseValue = SwLoopInst->findCaseDest(TrueBB);
         assert(TrueCaseValue != nullptr &&
-               "Case to this BB should already be added");
+               "This BB should be added to switch case already");
         auto *FalseCaseValue = SwLoopInst->findCaseDest(FalseBB);
         assert(FalseCaseValue != nullptr &&
-               "Case to this BB should already be added");
+               "This BB should be added to switch case already");
 
         IRBuilder<> CondBrBuilder(BB);
 
@@ -96,7 +111,7 @@ PreservedAnalyses ControlFlowFlattening::run(Function &Func,
 
         auto *CaseValue = SwLoopInst->findCaseDest(Successor);
         assert(CaseValue != nullptr &&
-               "Case to this BB should already be added");
+               "This BB should be added to switch case already");
 
         IRBuilder<> UncondBrBuilder(BB);
 
@@ -110,8 +125,6 @@ PreservedAnalyses ControlFlowFlattening::run(Function &Func,
     LLVM_DEBUG(dbgs() << "Unhandled basic block, terminated with inst: "
                       << TermInst << "\n");
   }
-
-  dbgs() << Func << "\n";
 
   return PreservedAnalyses::none();
 }
@@ -153,7 +166,7 @@ BasicBlock *ControlFlowFlattening::splitEntryBlock(BasicBlock *EntryBlock) {
     EntryBlock = SplitedEntry;
   }
 
-  // FIXME: handle invoke inst
+  // TODO: handle invoke inst
 
   return EntryBlock;
 }
